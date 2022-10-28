@@ -1,0 +1,3 @@
+*.sqlite3
+gcal-msg.toml
+discord-msg.toml

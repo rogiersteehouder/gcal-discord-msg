@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>Google consent</title>
+<script>
+function refresh_token(e) {
+	e.preventDefault();
+	let data = new FormData(document.getElementById("form-refresh"));
+	try {
+		let code_url = new URL(data.get("code"));
+		data.set("code", code_url.searchParams.get("code"))
+	} catch (error) {}
+	fetch("https://oauth2.googleapis.com/token", { method: "POST", body: data })
+		.then(r => r.json())
+		.then(o => {
+			document.getElementById("refresh_token").value = o.refresh_token;
+		})
+	return false;
+}
+window.onload = function() {
+	document.getElementById("form-refresh").onsubmit = refresh_token;
+};
+</script>
+</head>
+
+<body class="light">
+
+<header>
+	<h1>Google consent</h1>
+</header>
+
+<main>
+
+<article>
+	<header>
+		<h2>Step 1: Consent code</h2>
+	</header>
+
+	<section>
+	<form method="post" action="https://accounts.google.com/o/oauth2/auth" target="_blank">
+		<p>Client ID: <input type="text" name="client_id" /></p>
+		<p>When you submit this form, it will ask consent in a new tab/window. After you give consent, it will end in a 404 error (unless you run a web server on your computer). Copy the url, close the tab and paste the url below.</p>
+		<input type="hidden" name="redirect_uri" value="http://localhost" />
+		<input type="hidden" name="response_type" value="code" />
+		<input type="hidden" name="scope" value="https://www.googleapis.com/auth/calendar.readonly" />
+		<p><button type="submit">Google Access</button></p>
+	</form>
+	</section>
+</article>
+
+<article>
+	<header>
+		<h2>Step 2: Refresh token</h2>
+	</header>
+
+	<section>
+	<form id="form-refresh">
+		<p>Code url: <input type="text" name="code" /></p>
+		<p>Client ID: <input type="text" name="client_id" /></p>
+		<p>Client Secret: <input type="text" name="client_secret" /></p>
+		<input type="hidden" name="redirect_uri" value="http://localhost" />
+		<input type="hidden" name="grant_type" value="authorization_code" />
+		<p><button type="submit">Refresh token</button></p>
+	</form>
+	<p>Refresh token: <input type="text" id="refresh_token" readonly /></p>
+	</section>
+</article>
+
+</main>
+
+</body>
+</html>
