@@ -14,7 +14,7 @@ channel.
 
 	> discord-msg.py -c <channel> -m <message> [-r <mention>]
 
-To find the role ids, you need to go to you user settings and under advanced
+To find the role ids, you need to go to your user settings and under advanced
 settings, activate developer mode. That adds a "Copy ID" option to the roles
 in the server settings.
 
@@ -72,4 +72,4 @@ You only need to consent to access once. The refresh token is then used by the
 script to recieve access tokens and access the calendar.
 
 `gcal-msg-consent.html` should give you the refresh token to put in the toml
-file.
+file. (This is untested.)

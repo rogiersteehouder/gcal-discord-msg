@@ -18,7 +18,7 @@ from loguru import logger
 try:
     import tomllib  # type: ignore
 except:
-    import tomli as tomllib
+    import tomli as tomllib  # type: ignore
 
 # Click documentation: https://click.palletsprojects.com/
 @click.command()

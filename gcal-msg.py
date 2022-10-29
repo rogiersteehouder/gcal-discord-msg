@@ -26,6 +26,7 @@ import datetime
 import pathlib
 import re
 import json
+import html
 from typing import List
 
 import click
@@ -35,7 +36,7 @@ from loguru import logger
 try:
     import tomllib  # type: ignore
 except:
-    import tomli as tomllib
+    import tomli as tomllib  # type: ignore
 
 
 class Default(dict):
@@ -162,7 +163,8 @@ def main(loglevel: str, crontab: pathlib.Path):
                         event["start"]["dateTime"].replace("Z", "+00:00")
                     )
                     data = json.loads(
-                        striptags.sub("", event["description"]), object_hook=Default
+                        html.unescape(striptags.sub("", event["description"])).replace("\xa0", " "),
+                        object_hook=Default,
                     )["discord-msg"]
                     dttm -= datetime.timedelta(seconds=data["offset"])
                     data["dttm"] = dttm
