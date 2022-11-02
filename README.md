@@ -72,4 +72,4 @@ You only need to consent to access once. The refresh token is then used by the
 script to recieve access tokens and access the calendar.
 
 `gcal-msg-consent.html` should give you the refresh token to put in the toml
-file. (This is untested.)
+file.

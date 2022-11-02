@@ -44,6 +44,11 @@ class Default(dict):
         return "-"
 
 
+class APIError(Exception):
+    def __str__(self):
+        return "{} - {}".format(*self.args[0:2])
+
+
 def get_auth(
     http_client: httpx.Client, client_id: str, client_secret: str, refresh_token: str
 ):
@@ -56,7 +61,11 @@ def get_auth(
             "refresh_token": refresh_token,
         },
     ).json()
-    return (token["token_type"], token["access_token"])
+    if "error" in token:
+        raise APIError(token["error"], token.get("error_description", ""))
+    if "access_token" not in token:
+        raise APIError("unknown", "Response has no access_token")
+    return (token.get("token_type", "Bearer"), token["access_token"])
 
 
 def get_events(http_client: httpx.Client, calendar_id: str, utcnow: datetime.datetime):
@@ -70,6 +79,8 @@ def get_events(http_client: httpx.Client, calendar_id: str, utcnow: datetime.dat
             "timeMin": utcnow.isoformat(),
         },
     ).json()
+    if "error" in events:
+        raise APIError(events["error"], events.get("error_description", ""))
     return events["items"]
 
 
@@ -77,6 +88,8 @@ def edit_crontab(crontab: pathlib.Path, cronlines: List[str]):
     start = "#### START discord-msg"
     end = "#### END discord-msg"
     ct = crontab.read_text().split("\n")
+    if ct[-1] == "":
+        del ct[-1]
     # remove old entries
     i = 0
     remove = False
@@ -92,7 +105,7 @@ def edit_crontab(crontab: pathlib.Path, cronlines: List[str]):
     # add new entries
     ct += [start]
     ct += cronlines
-    ct += [end]
+    ct += [end, ""]
     crontab.write_text("\n".join(ct))
 
 
@@ -134,24 +147,30 @@ def main(loglevel: str, crontab: pathlib.Path):
 
         with httpx.Client() as cli:
 
-            # Auth token
-            logger.debug("New auth token")
-            cli.headers.update(
-                {
-                    "Authorization": "{} {}".format(
-                        *get_auth(
-                            cli,
-                            cfg["client_id"],
-                            cfg["client_secret"],
-                            cfg["refresh_token"],
-                        )
-                    )
-                }
-            )
+            try:
 
-            # GCal events
-            logger.debug("Get calendar events")
-            events = get_events(cli, cfg["calendar_id"], utcnow)
+                # Auth token
+                logger.debug("New auth token")
+                cli.headers.update(
+                    {
+                        "Authorization": "{} {}".format(
+                            *get_auth(
+                                cli,
+                                cfg["client_id"],
+                                cfg["client_secret"],
+                                cfg["refresh_token"],
+                            )
+                        )
+                    }
+                )
+
+                # GCal events
+                logger.debug("Get calendar events")
+                events = get_events(cli, cfg["calendar_id"], utcnow)
+
+            except APIError as err:
+                logger.error("Google API error: {}", err)
+                return 1
 
             striptags = re.compile("<.*?>")
             cronlines = []
@@ -163,7 +182,9 @@ def main(loglevel: str, crontab: pathlib.Path):
                         event["start"]["dateTime"].replace("Z", "+00:00")
                     )
                     data = json.loads(
-                        html.unescape(striptags.sub("", event["description"])).replace("\xa0", " "),
+                        html.unescape(striptags.sub("", event["description"])).replace(
+                            "\xa0", " "
+                        ),
                         object_hook=Default,
                     )["discord-msg"]
                     dttm -= datetime.timedelta(seconds=data["offset"])
