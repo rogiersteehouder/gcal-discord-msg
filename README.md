@@ -18,6 +18,10 @@ To find the role ids, you need to go to your user settings and under advanced
 settings, activate developer mode. That adds a "Copy ID" option to the roles
 in the server settings.
 
+You can also define presets in the config file for even quicker sending:
+
+	> discord-msg.py -p <preset>
+
 
 ## gcal-msg.py
 
@@ -31,6 +35,7 @@ parse the description as json. It expects a root key `discord-msg` as follows:
 			"channel": "<channel as defined in config>",
 			"message": "<message as defined in config>",
 			"mention": "<mention (role) as defined in config (optional)>",
+			"preset": "<preset as defined in config (replaces channel, message and mention)>",
 			"offset": 300
 		}
 	}

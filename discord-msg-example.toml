@@ -9,3 +9,7 @@ test = "Testing 1..2..3.. :smile:"
 # optional groups to prepend the message
 all = "@everyone"
 role = "<@&123456>"
+
+[presets]
+# quick messages with fixed combinations
+test = { channel = "test", message = "test", mention = "" }

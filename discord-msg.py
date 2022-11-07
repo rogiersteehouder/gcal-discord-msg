@@ -22,11 +22,19 @@ except:
 
 # Click documentation: https://click.palletsprojects.com/
 @click.command()
-@click.option("-c", "--channel", default="test", help="""Discord channel defined in config""")
-@click.option("-m", "--message", default="test", help="""Message defined in config""")
+@click.option("-c", "--channel", default="", help="""Discord channel defined in config""")
+@click.option("-m", "--message", default="", help="""Message defined in config""")
 @click.option("-r", "--role", default="", help="""Mention role defined in config""")
-@click.option("--loglevel", default="warning", type=click.Choice(["trace", "debug", "info", "success", "warning", "error", "critical"], case_sensitive=False))
-def main(loglevel, channel, message, role):
+@click.option("-p", "--preset", default="", help="""Preset defined in config""")
+@click.option(
+    "--loglevel",
+    default="warning",
+    type=click.Choice(
+        ["trace", "debug", "info", "success", "warning", "error", "critical"],
+        case_sensitive=False,
+    ),
+)
+def main(loglevel, channel, message, role, preset):
     logger.remove()
     logger.add(
         sys.stderr,
@@ -45,6 +53,12 @@ def main(loglevel, channel, message, role):
         logger.info("Start")
 
         cfg = tomllib.loads(pathlib.Path(__file__).with_suffix(".toml").read_text())
+
+        p = cfg.get("presets", {}).get(preset)
+        if p:
+            channel = p["channel"]
+            message = p["message"]
+            role = p.get("role", "")
 
         with httpx.Client() as cli:
             chan = cfg["channels"][channel]

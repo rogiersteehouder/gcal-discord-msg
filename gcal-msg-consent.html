@@ -16,6 +16,7 @@ function refresh_token(e) {
 		.then(r => r.json())
 		.then(o => {
 			document.getElementById("refresh_token").value = o.refresh_token;
+			console.log(o);
 		})
 	return false;
 }

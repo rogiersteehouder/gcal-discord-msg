@@ -12,6 +12,7 @@ with an entry in the description like:
         "channel": "channel as defined in discord-msg config",
         "message": "message as defined in discord-msg config",
         "mention": "optional mention as defined in discord-msg config",
+        "preset": "preset as defined in sicord-msg config (replaces channel, message and mention)",
         "offset": <number of seconds before the event to send the message>
     }
 }
@@ -189,18 +190,21 @@ def main(loglevel: str, crontab: pathlib.Path):
                     )["discord-msg"]
                     dttm -= datetime.timedelta(seconds=data["offset"])
                     data["dttm"] = dttm
-                    logger.debug(
-                        "{label}, {dttm:%Y-%m-%d %H:%M}: discord-msg.py -c {channel} -m {message} -r {mention}",
-                        **data
-                    )
 
                     if "label" in data:
                         cronlines.append("# {label}".format_map(data))
-                    cronlines.append(
-                        "{dttm:%M\t%H\t%d\t%m\t*}\tpython3 ${{HOME}}/msg/discord-msg.py -c {channel} -m {message} -r {mention}".format_map(
-                            data
+                    if "preset" in data:
+                        cronlines.append(
+                            "{dttm:%M\t%H\t%d\t%m\t*}\tpython3 ${{HOME}}/msg/discord-msg.py -p {preset}".format_map(
+                                data
+                            )
                         )
-                    )
+                    else:
+                        cronlines.append(
+                            "{dttm:%M\t%H\t%d\t%m\t*}\tpython3 ${{HOME}}/msg/discord-msg.py -c {channel} -m {message} -r {mention}".format_map(
+                                data
+                            )
+                        )
 
             # IMPORTANT: use this script as editor for crontab:
             # > EDITOR='python gcal-msg.py --crontab' crontab -e
