@@ -1,0 +1,67 @@
+{% set pub_date = pub_date if pub_date is defined else datetime.now() %}
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>{% block title required %}{% endblock %}</title>
+	<meta name="date" content="{{ '{:%Y-%m-%d}'.format(pub_date) }}" />
+	<meta name="description" content="{% block description required %}{% endblock %}" />
+	<link rel="icon" href="data:,">
+	<link rel="stylesheet" href="/base.css">
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+{% block head %}{% endblock %}
+</head>
+
+<body class="light">
+
+<header>
+	<h1>{% block pagetitle %}{{ self.title() }}{% endblock %}</h1>
+	<a href="#site-nav" class="speach">Skip to navigation</a>
+</header>
+
+<main>
+{#
+<article>
+	<header>
+		<h2>Article title</h2>
+		<p>Article by-line</p>
+	</header>
+
+	<section>
+	</section>
+</article>
+#}
+{% block main required %}{% endblock %}
+
+</main>
+
+{% if self.siteinfo() %}
+<div id="site-info">
+	{% block siteinfo %}{% endblock %}
+</div>
+{% endif %}
+
+{% if navmenu is defined or self.subnavigation() %}
+<nav id="site-nav">
+<h6 class="speach">Site Navigation</h6>
+
+{% if navmenu is defined %}
+{{ navmenu(request) }}
+{% endif %}
+
+{% if self.subnavigation() %}
+{% block subnavigation %}{% endblock %}
+{% endif %}
+</nav>
+{% endif %}
+
+{% if self.footer() %}
+<footer>
+	{% block footer %}{% endblock %}
+</footer>
+{% endif %}
+
+</body>
+</html>

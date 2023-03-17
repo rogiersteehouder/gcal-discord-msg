@@ -1,0 +1,14 @@
+{% extends 'base.html.j2' %}
+
+{% block title %}Discord messages{% endblock %}
+
+{% block description %}Send Discord message based on calendar events{% endblock %}
+
+{% block main %}
+<article>
+<header><h2>{% block subtitle required %}{% endblock %}</h2></header>
+<section>
+{% block content %}{% endblock %}
+</section>
+</article>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends 'msg.html.j2' %}
+
+{% block subtitle %}Overview{% endblock %}
+
+{% block head %}
+<script>
+function getCrontab() {
+	return fetch('{{ url_for("crontab") }}')
+		.then(r => {
+			if (!r.ok) { throw new Error(`Fetch went wrong: ${r.status} - ${r.statusText}`); }
+			return r.text();
+		})
+		.then(t => { document.getElementById("crontab-output").textContent = t; return true; })
+		.catch(e => { console.log(e); return false; });
+}
+function sendDiscord(elem) {
+	while (elem.tagName != 'TR') { elem = elem.parentElement; }
+	preset = elem.firstElementChild.textContent;
+	if (!preset) { alert('No preset found'); return; }
+	if (!confirm(`Send message ${preset}?`)) { return; }
+	return fetch(`{{ url_for("send") }}?preset=${preset}`)
+		.then(r => {
+			if (!r.ok) { throw new Error(`Fetch went wrong: ${r.status} - ${r.statusText}`); }
+			return true;
+		})
+		.catch(e => { console.log(e); return false; });
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<h3>Presets</h3>
+<table>
+	<tr><th>preset</th><th>channel</th><th>mention</th><th>message</th><td><a href="javascript:void(0);" onclick="document.getElementById('add-dialog').showModal();" class="button material-icons">add</a></td></tr>
+{% for p in presets %}
+	<tr><td>{{ p[0] }}</td><td>{{ p[1] }}</td><td>{{ p[2] }}</td><td>{{ p[3] }}</td><td><a href="javascript:void(0);" onclick="sendDiscord(this)" class="button material-icons">send</a></td></tr>
+{% endfor %}
+</table>
+<dialog id="add-dialog">
+<form method="POST">
+<dl class="form">
+	<dt><label>Preset</label></dt>
+	<dd><input type="text" name="presetid" required /></dd>
+	<dt><label>Channel</label></dt>
+	<dd><select name="channelid" required>
+		<option></option>
+		{% for c in channels %}
+		<option>{{ c[0] }}</option>
+		{% endfor %}
+	</select></dd>
+	<dt><label>Mention</label></dt>
+	<dd><select name="mentionid">
+		<option></option>
+		{% for m in mentions %}
+		<option>{{ m[0] }}</option>
+		{% endfor %}
+	</select></dd>
+	<dt><label>Message</label></dt>
+	<dd><textarea name="message" required></textarea></dd>
+	<dd><button type="submit">Add</button> <button type="reset" onclick="document.getElementById('add-dialog').close()">Cancel</button></dd>
+</dl>
+</form>
+</dialog>
+
+<h3>Crontab (stored)</h3>
+<table>
+	<tr><th>description</th><th>schema</th><th>preset</th></tr>
+{% for c in crontab %}
+	<tr><td>{{ c[1] }}</td><td>{{ c[2] }}</td><td>{{ c[3] }}</td></tr>
+{% endfor %}
+</table>
+
+<h3>Crontab (installed) <a href="javascript:void(0)" onclick="getCrontab();" class="button material-icons">refresh</a></h3>
+<pre id="crontab-output" class="code"></pre>
+{% endblock %}

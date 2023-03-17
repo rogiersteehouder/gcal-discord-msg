@@ -1,7 +1,0 @@
-# google calendar id
-calendar_id = "abcd@group.calendar.google.com"
-# google api client id and secret
-client_id = "123-abc.apps.googleusercontent.com"
-client_secret = "ABCDEFG"
-# google api refresh token (see README and gcal-msg-consent.html)
-refresh_token = "XYZ"
