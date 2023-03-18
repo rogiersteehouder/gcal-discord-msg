@@ -7,9 +7,9 @@
 	<title>{% block title required %}{% endblock %}</title>
 	<meta name="date" content="{{ '{:%Y-%m-%d}'.format(pub_date) }}" />
 	<meta name="description" content="{% block description required %}{% endblock %}" />
-	<link rel="icon" href="data:,">
-	<link rel="stylesheet" href="/base.css">
-	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+	<link rel="icon" href="data:," />
+	<link rel="preload" as="style" href="/base.css" onload="this.rel='stylesheet'" />
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
 
 {% block head %}{% endblock %}
 </head>
@@ -63,5 +63,6 @@
 </footer>
 {% endif %}
 
+<noscript><link rel="stylesheet" href="/base.css" /></noscript>
 </body>
 </html>

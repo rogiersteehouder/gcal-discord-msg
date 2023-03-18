@@ -5,8 +5,8 @@
 """
 
 __author__ = "Rogier Steehouder"
-__date__ = "2023-03-14"
-__version__ = "0.1"
+__date__ = "2023-03-18"
+__version__ = "1.0"
 
 import datetime
 import html
@@ -14,8 +14,14 @@ import json
 import re
 import sqlite3
 import subprocess
-import tomllib
 from pathlib import Path
+from typing import List
+
+# Raspberry Pi: tomllib is new in python 3.11
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 
 import httpx
 from jinja2 import FileSystemLoader
@@ -47,6 +53,7 @@ jinja_environment.globals["navmenu"] = Navmenu(
     ]
 )
 
+
 #####
 # Crontab
 #####
@@ -63,13 +70,15 @@ class Crontab:
         self.last_read = datetime.datetime.min
         self.timeout = datetime.timedelta(seconds=120)
 
+        self.last_result = None
+
     def get(self):
         now = datetime.datetime.now()
         if now > self.last_read + self.timeout:
             self.tab = None
         if self.tab is None:
             tab = subprocess.run(
-                "crontab -l",
+                ["crontab", "-l"],
                 capture_output=True,
                 timeout=5,
                 text=True,
@@ -77,13 +86,13 @@ class Crontab:
             ).stdout.splitlines()
 
             if self.startline in tab:
-                s = self.tab.index(self.startline)
+                s = tab.index(self.startline)
             else:
                 s = len(tab)
             self.tab_pre = tab[:s] + [self.startline]
 
             if self.endline in tab:
-                e = self.tab.index(self.endline)
+                e = tab.index(self.endline)
             else:
                 e = len(tab)
             self.tab_post = tab[e + 1 :] + [self.endline]
@@ -94,21 +103,21 @@ class Crontab:
 
         return self.tab_pre + self.tab_msg + self.tab_post
 
-    def set(self, tab_msg: list[str] = None):
+    def set(self, tab_msg: List[str] = None):
         if self.tab_pre is None:
             self.get()
         if tab_msg is not None:
             self.tab_msg = tab_msg
 
         result = subprocess.run(
-            "crontab -",
+            ["crontab", "-"],
             input="\n".join(self.tab_pre + self.tab_msg + self.tab_post),
             capture_output=True,
             timeout=30,
             text=True,
             check=True,
         )
-        self.log.append(result.stdout)
+        self.last_result = result.stdout
 
 
 #####
@@ -175,7 +184,7 @@ class GCalUpdater:
             else:
                 raise
         if "error" in events:
-            raise HTTPException(events["error"], events.get("error_description", ""))
+            raise HTTPException(events["error"]["code"], events["error"].get("message", ""))
         return events["items"]
 
     def update(self):
@@ -222,12 +231,12 @@ class GCalUpdater:
                     for line in row[1].splitlines():
                         cronlines.append(f"# {line}")
                 cronlines.append(
-                    f'{row[2]}\tcurl "http://127.0.0.1/ws/send?preset={row[3]}"'
+                    f'{row[2]}\tcurl "http://127.0.0.1:{app.address[1]}/ws/send?preset={row[3]}"'
                 )
 
         ct = Crontab()
         ct.set(cronlines)
-        self.log.extend(ct.get())
+        self.log.append(ct.last_result)
 
         return self.log
 
@@ -334,9 +343,7 @@ def google_response(req: Request):
             req.app.address[1]
         ),
     }
-    ic(data)
     resp = httpx.post("https://oauth2.googleapis.com/token", json=data)
-    ic(resp.text)
     resp.raise_for_status()
     token = resp.json()
     db.set("gcal", "refresh_token", token["refresh_token"])
@@ -416,9 +423,9 @@ function updateCrontab() {
 	return fetch('{{ url_for("update") }}')
 		.then(r => {
 			if (!r.ok) { throw new Error(`Fetch went wrong: ${r.status} - ${r.statusText}`); }
-			return r.text();
+			return r.json();
 		})
-		.then(t => { document.getElementById("crontab-output").textContent = t; return true; })
+		.then(l => { document.getElementById("update-output").textContent = l.join("\\n"); return true; })
 		.catch(e => { console.log(e); return false; });
 }
 </script>

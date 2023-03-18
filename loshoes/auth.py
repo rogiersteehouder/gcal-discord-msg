@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+from typing import Optional, Tuple, List, Union
 
 import jwt
 from passlib.context import CryptContext
@@ -62,10 +63,10 @@ class BaseAuth:
     def __init__(
         self,
         header: str = "Authorization",
-        scheme: str | None = None,
-        except_paths: list[str] | None = None,
-        except_hosts: list[str] | None = None,
-        user_check: BaseUserCheck | None = None,
+        scheme: Optional[str] = None,
+        except_paths: Optional[List[str]] = None,
+        except_hosts: Optional[List[str]] = None,
+        user_check: Optional[BaseUserCheck] = None,
     ):
         if except_paths is None:
             except_paths = []
@@ -113,9 +114,9 @@ class BaseAuth:
 class BasicAuth(BaseAuth):
     def __init__(
         self,
-        except_paths: list[str] | None = None,
-        except_hosts: list[str] | None = None,
-        user_check: BaseUserCheck | None = None,
+        except_paths: Optional[List[str]] = None,
+        except_hosts: Optional[List[str]] = None,
+        user_check: Optional[BaseUserCheck] = None,
         realm: str="Local",
     ):
         super().__init__(
@@ -139,9 +140,9 @@ class BasicAuth(BaseAuth):
 class TokenAuth(BaseAuth):
     def __init__(
         self,
-        except_paths: list[str] | None = None,
-        except_hosts: list[str] | None = None,
-        user_check: BaseUserCheck | None = None,
+        except_paths: Optional[List[str]] = None,
+        except_hosts: Optional[List[str]] = None,
+        user_check: Optional[BaseUserCheck] = None,
     ):
         super().__init__(
             header="Authorization",
@@ -155,11 +156,11 @@ class TokenAuth(BaseAuth):
 class JwtAuth(BaseAuth):
     def __init__(
         self,
-        secret: str | bytes,
+        secret: Union[str, bytes],
         token_expire: timedelta = timedelta(hours=4),
-        except_paths: list[str] | None = None,
-        except_hosts: list[str] | None = None,
-        user_check: BaseUserCheck | None = None,
+        except_paths: Optional[List[str]] = None,
+        except_hosts: Optional[List[str]] = None,
+        user_check: Optional[BaseUserCheck] = None,
     ):
         super().__init__(
             header="Authorization",
@@ -178,7 +179,7 @@ class JwtAuth(BaseAuth):
         return userid if self.user_check.has_userid(userid) else None
 
     def to_token(self, userid: str) -> str:
-        return jwt.encode(
+        token = jwt.encode(
             {
                 "userid": userid,
                 "iat": datetime.now(timezone.utc),
@@ -186,8 +187,12 @@ class JwtAuth(BaseAuth):
             self.secret,
             algorithm="HS256",
         )
+        # Raspberry Pi: older version of pyjwt
+        if isinstance(token, bytes):
+            token = token.decode()
+        return token
 
-    def from_token(self, token: str) -> tuple[str, datetime]:
+    def from_token(self, token: str) -> Tuple[str, datetime]:
         userid = ""
         iat = datetime.min.replace(tzinfo=timezone.utc)
         if token:

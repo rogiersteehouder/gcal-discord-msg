@@ -14,10 +14,9 @@ import ssl
 from datetime import datetime
 from http import HTTPStatus
 from pathlib import Path
-from traceback import print_exception
+from traceback import print_exc
+from typing import Any, Iterable, Callable, Type, Optional, Tuple, Union
 from urllib.parse import parse_qs
-
-from typing import Any, Iterable, Callable, Type, Self
 
 from icecream import ic
 
@@ -107,7 +106,7 @@ status = Status()
 
 
 class HTTPException(Exception):
-    def __init__(self, status_code: int, reason: str | None = None):
+    def __init__(self, status_code: int, reason: Optional[str] = None):
         self.status_code = status_code
         self.reason = reason or status.get(status_code).phrase
 
@@ -134,12 +133,12 @@ class Request:
     def __init__(
         self,
         app: "Server",
-        client_addr: tuple[str, int],
+        client_addr: Tuple[str, int],
         method: str,
         url: str,
         http_version: str,
         headers: dict,
-        body: bytes = None,
+        body: Optional[bytes] = None,
         stream=None,
     ):
         self.app = app
@@ -187,7 +186,7 @@ class Request:
         return f"<Request: {self.method} {self.url} >"
 
     @classmethod
-    def create(cls, app: "Server", client_stream, client_addr: tuple[str, int]):
+    def create(cls, app: "Server", client_stream, client_addr: Tuple[str, int]):
         """Create a request object from an icoming http request"""
         line = cls._safe_readline(client_stream).strip()
         try:
@@ -291,10 +290,10 @@ class Response:
         self,
         body: Any = "",
         status_code: int = 200,
-        headers: dict | None = None,
-        reason: str | None = None,
-        content_type: str | None = None,
-        charset: str | None = None,
+        headers: Optional[dict] = None,
+        reason: Optional[str] = None,
+        content_type: Optional[str] = None,
+        charset: Optional[str] = None,
     ):
         if body is None and status_code == 200:
             body = b""
@@ -323,8 +322,8 @@ class Response:
         value: str,
         path: str = "/",
         domain: str = None,
-        expires: str | datetime = None,
-        max_age: int | None = None,
+        expires: Optional[Union[str, datetime]] = None,
+        max_age: Optional[int] = None,
         secure: bool = False,
         http_only: bool = False,
     ):
@@ -410,10 +409,10 @@ class Response:
     @classmethod
     def send_file(
         cls,
-        filename: str | Path,
+        filename: Union[str, Path],
         status_code: int = 200,
-        content_type: str | None = None,
-        headers: dict | None = None,
+        content_type: Optional[str] = None,
+        headers: Optional[dict] = None,
     ):
         """Send a file as response"""
         p = Path(filename)
@@ -537,7 +536,7 @@ class SubServer:
         self.after_error_request_handlers = []
         self.error_handlers = {}
 
-    def route(self, url_pattern: str, methods: Iterable | None = None, name: str = None):
+    def route(self, url_pattern: str, methods: Optional[Iterable] = None, name: Optional[str] = None):
         """Decorator: bind a function to an URL pattern for the given http methods
 
         The function takes a request object and any arguments present in the URL pattern.
@@ -612,20 +611,20 @@ class SubServer:
         self.after_error_request_handlers.append(f)
         return f
 
-    def error_handler(self, code_or_exception: int | Type[Exception]):
+    def error_handler(self, code_or_exception: Union[int, Type[Exception]]):
         """Run a function when any request fails
 
         The function takes a request object and either an error code or an exception.
         If this function has a result, it is sent instead of a regular response.
         """
 
-        def decorated(f: Callable[[int | Type[Exception]], Any]):
+        def decorated(f: Callable[[Union[int, Type[Exception]]], Any]):
             self.error_handlers[code_or_exception] = f
             return f
 
         return decorated
 
-    def mount(self, subapp: Self, url_prefix: str = ""):
+    def mount(self, subapp, url_prefix: str = ""):
         """Embed another app inside this one with an optional URL prefix"""
         for methods, pattern, handler, name in subapp.url_map:
             self.url_map.append(
@@ -664,13 +663,13 @@ class Server(SubServer):
         return f
 
     @staticmethod
-    def server_info(host: str | None, port: int) -> tuple:
+    def server_info(host: Optional[str], port: int) -> tuple:
         """Get server information: protocol family and address"""
         ai = socket.getaddrinfo(host, port, flags=socket.AI_PASSIVE)
         return ai[0][0], ai[0][-1]
 
     @staticmethod
-    def abort(status_code: int, reason: str | None = None):
+    def abort(status_code: int, reason: Optional[str] = None):
         """Abort the current action (raise an HTTPException)"""
         raise HTTPException(status_code, reason)
 
@@ -680,7 +679,7 @@ class Server(SubServer):
 
     def run(
         self,
-        host: str | None = "127.0.0.1",
+        host: Optional[str] = "127.0.0.1",
         port: int = 5001,
         use_threading: bool = True,
         cert_file: str = None,
@@ -693,10 +692,15 @@ class Server(SubServer):
         fam, addr = self.server_info(host, port)
         self.address = addr
 
-        if socket.has_dualstack_ipv6 and fam == socket.AF_INET6:
-            self.server = socket.create_server(addr, family=fam, dualstack_ipv6=True)
-        else:
-            self.server = socket.create_server(addr, family=fam)
+        ## Raspberry Pi: this is new in python 3.8
+        # if socket.has_dualstack_ipv6 and fam == socket.AF_INET6:
+        #     self.server = socket.create_server(addr, family=fam, dualstack_ipv6=True)
+        # else:
+        #     self.server = socket.create_server(addr, family=fam)
+        self.server = socket.socket(socket.AF_INET)
+        self.server.bind(addr)
+        self.server.listen()
+
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.settimeout(10)
 
@@ -715,9 +719,9 @@ class Server(SubServer):
                     if exc.errno in (errno.ECONNABORTED, errno.ENOTSOCK):
                         break
                     else:
-                        print_exception(exc)
+                        print_exc()
                 except Exception as exc:
-                    print_exception(exc)
+                    print_exc()
                 else:
                     if self.use_threading:
                         import threading
@@ -744,9 +748,9 @@ class Server(SubServer):
             resp = self.dispatch_request(req)
         except socket.timeout as exc:
             if exc.errno and exc.errno not in [60, 110]:  # not actually timeouts
-                print_exception(exc)
+                print_exc()
         except Exception as exc:
-            print_exception(exc)
+            print_exc()
 
         # response
         try:
@@ -757,9 +761,9 @@ class Server(SubServer):
             if exc.errno in [32, 54, 104, 128]:  # harmless
                 pass
             else:
-                print_exception(exc)
+                print_exc()
         except Exception as exc:
-            print_exception(exc)
+            print_exc()
 
         if stream != sock:
             sock.close()
@@ -793,7 +797,7 @@ class Server(SubServer):
         except HTTPException as exc:
             return self.make_response(req, exc.reason, error=exc.status_code)
         except Exception as exc:
-            print_exception(exc)
+            print_exc()
             error = 500
             if exc.__class__ in self.error_handlers:
                 error = exc.__class__
@@ -803,7 +807,7 @@ class Server(SubServer):
         return self.make_response(req, error=500)
 
     def make_response(
-        self, req: Request, resp: Any = None, error: int | Type[Exception] | None = None
+        self, req: Request, resp: Any = None, error: Optional[Union[int, Type[Exception]]] = None
     ) -> Response:
         """Make a response"""
         if error:
@@ -811,7 +815,7 @@ class Server(SubServer):
                 try:
                     resp = self.error_handlers[error](req, error)
                 except Exception as exc:
-                    print_exception(exc)
+                    print_exc()
                     resp = Response(resp, status_code=error)
             else:
                 resp = Response(resp, status_code=error)
@@ -838,7 +842,7 @@ class Static:
     app.get("/static/<path:path>")(Static(dir1, dir2, ...))
     """
 
-    def __init__(self, *paths: str | Path):
+    def __init__(self, *paths: Union[str, Path]):
         self.paths = [Path(p) for p in paths]
 
     def __call__(self, req: Request, path: str):

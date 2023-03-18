@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 
-from typing import Callable
+from typing import Callable, Optional, Union
 
 from .auth import BaseUserCheck
 
@@ -30,7 +30,7 @@ class DBUserCheck(BaseUserCheck):
 
 
 class Database:
-    def __init__(self, db_file: Path | str):
+    def __init__(self, db_file: Union[Path, str]):
         self.db_file = Path(db_file)
         if not self.db_file.exists():
             self.init_db()
@@ -51,13 +51,15 @@ class Database:
             """
             )
 
-    def get(self, domain: str, key: str, default: str | None = None):
+    def get(self, domain: str, key: str, default: Optional[str] = None):
         result = None
-        with self.connect() as conn:
-            for row in conn.execute(
-                """select value from key_value where domain = ? and key = ?""", (domain, key)
-            ):
-                result = row[0]
+        try:
+            with self.connect() as conn:
+                result = conn.execute(
+                    """select value from key_value where domain = ? and key = ?""", (domain, key)
+                ).fetchone()[0]
+        except (TypeError, IndexError):
+            return default
         return result
 
     def set(self, domain: str, key: str, value: str):

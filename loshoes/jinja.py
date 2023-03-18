@@ -16,6 +16,7 @@ After this, you can use TemplateResponse and StringTemplateResponse.
 import importlib.resources
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 import jinja2.ext
 from jinja2 import Environment, ChoiceLoader, PackageLoader, select_autoescape
@@ -85,12 +86,12 @@ class TemplateResponse(Response):
     def __init__(
         self,
         template: str,
-        context: dict | None = None,
+        context: Optional[dict] = None,
         status_code: int = 200,
-        headers: dict | None = None,
-        reason: str | None = None,
-        content_type: str | None = None,
-        charset: str | None = None,
+        headers: Optional[dict] = None,
+        reason: Optional[str] = None,
+        content_type: Optional[str] = None,
+        charset: Optional[str] = None,
     ):
         super().__init__(
             render_template(template, context or {}),
@@ -109,12 +110,12 @@ class StringTemplateResponse(Response):
     def __init__(
         self,
         template: str,
-        context: dict | None = None,
+        context: Optional[dict] = None,
         status_code: int = 200,
-        headers: dict | None = None,
-        reason: str | None = None,
-        content_type: str | None = None,
-        charset: str | None = None,
+        headers: Optional[dict] = None,
+        reason: Optional[str] = None,
+        content_type: Optional[str] = None,
+        charset: Optional[str] = None,
     ):
         super().__init__(
             render_string(template, context or {}),
@@ -132,8 +133,12 @@ class StringTemplateResponse(Response):
 
 @app.get("/base.css")
 def stylesheet(req):
-    with importlib.resources.as_file(importlib.resources.files(__package__).joinpath("static/base.css")) as f:
-        return Response.send_file(f, content_type="text/css; charset=utf-8", headers={"Cache-Control": "max-age: 82800"})
+    # python < 3.9 has older importlib.resources
+    if hasattr(importlib.resources, "as_file"):
+        with importlib.resources.as_file(importlib.resources.files(__package__).joinpath("static/base.css")) as f:
+            return Response.send_file(f, content_type="text/css; charset=utf-8", headers={"Cache-Control": "max-age: 82800"})
+    else:
+        return Response.send_file(Path(__file__).parent / "static/base.css", content_type="text/css; charset=utf-8", headers={"Cache-Control": "max-age: 82800"})
 
 
 #####

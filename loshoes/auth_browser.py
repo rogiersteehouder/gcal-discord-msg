@@ -1,5 +1,6 @@
 from datetime import datetime, timezone, timedelta
-from random import randbytes
+from secrets import token_urlsafe
+from typing import Optional, Tuple, List, Union
 from urllib.parse import urlencode
 
 import jwt
@@ -15,11 +16,11 @@ from .auth import BaseUserCheck
 class LoginAuth:
     def __init__(
         self,
-        secret: str | bytes,
+        secret: Union[str, bytes],
         token_expire: timedelta = timedelta(hours=4),
-        except_paths: list[str] | None = None,
-        except_hosts: list[str] | None = None,
-        user_check: BaseUserCheck | None = None,
+        except_paths: Optional[List[str]] = None,
+        except_hosts: Optional[List[str]] = None,
+        user_check: Optional[BaseUserCheck] = None,
     ):
         if except_paths is None:
             except_paths = []
@@ -38,7 +39,7 @@ class LoginAuth:
         self.valid_tokens = set()
 
     def to_token(self, userid: str) -> str:
-        return jwt.encode(
+        token = jwt.encode(
             {
                 "userid": userid,
                 "iat": datetime.now(timezone.utc),
@@ -46,8 +47,12 @@ class LoginAuth:
             self.secret,
             algorithm="HS256",
         )
+        # Raspberry Pi: older version of pyjwt
+        if isinstance(token, bytes):
+            token = token.decode()
+        return token
 
-    def from_token(self, token: str) -> tuple[str, datetime]:
+    def from_token(self, token: str) -> Tuple[str, datetime]:
         userid = ""
         iat = datetime.min.replace(tzinfo=timezone.utc)
         if token:
@@ -79,7 +84,7 @@ class LoginAuth:
         if req.client_addr[0] in self.except_hosts:
             return True
         token = self.get_cookie(req)
-        if not token in self.valid_tokens:
+        if token not in self.valid_tokens:
             return False
         userid, iat = self.from_token(token)
         req.g.userid = userid
@@ -120,7 +125,7 @@ class LoginAuth:
         if "auth_token" in req.cookies:
             self.set_cookie(req, "")
 
-login_auth = LoginAuth(randbytes(16))
+login_auth = LoginAuth(token_urlsafe(16))
 
 app.before_request(login_auth)
 
