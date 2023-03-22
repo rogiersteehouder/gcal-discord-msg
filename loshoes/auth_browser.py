@@ -5,13 +5,14 @@ from urllib.parse import urlencode
 
 import jwt
 
-from .server import app, Request, Response
+from .server import app, Request, Response, Factory
 from .jinja import StringTemplateResponse
 from .auth import BaseUserCheck
 
 #####
 # Browser authentication
 #####
+
 
 class LoginAuth:
     def __init__(
@@ -125,36 +126,42 @@ class LoginAuth:
         if "auth_token" in req.cookies:
             self.set_cookie(req, "")
 
+
 login_auth = LoginAuth(token_urlsafe(16))
 
 app.before_request(login_auth)
+app.update_request_global(messages=Factory(list))
+
 
 @app.route("/login", methods=["GET", "POST"], name="login")
 def login(req: Request):
-    success_messages = []
-    error_messages = []
-
     if login_auth.login(req):
         if "next" in req.args:
             return login_auth.redirect_to_next(req)
-        success_messages.append("You have logged in.")
+        req.g.messages.append(
+            {"text": "You have logged in.", "categories": ["success"]}
+        )
     elif req.method == "POST":
-        error_messages.append('Wrong userid or password. Please try again.')
+        req.g.messages.append(
+            {
+                "text": "Wrong userid or password. Please try again.",
+                "categories": ["error"],
+            }
+        )
     elif hasattr(req.g, "userid"):
-        error_messages.append("Your login session expired.")
+        req.g.messages.append(
+            {"text": "Your login session expired.", "categories": ["error"]}
+        )
     elif "logout" in req.args.getlist("from"):
-        success_messages.append("You have logged out.")
+        req.g.messages.append(
+            {"text": "You have logged out.", "categories": ["success"]}
+        )
 
-    return StringTemplateResponse("""{% extends 'base.html.j2' %}
+    return StringTemplateResponse(
+        """{% extends 'base.html.j2' %}
 {% block title %}Login{% endblock %}
 {% block description %}Login page{% endblock %}
 {% block main %}
-{% for msg in success_messages %}
-<section class="success"><p>{{ msg }}</p></section>
-{% endfor %}
-{% for msg in error_messages %}
-<section class="error"><p>{{ msg }}</p></section>
-{% endfor %}
 <section>
 	<form method="post">
 	<dl class="form">
@@ -167,12 +174,13 @@ def login(req: Request):
 	</form>
 </section>
 {% endblock %}
-""", {
-    "request": req,
-    "userid": getattr(req.g, "userid", ""),
-    "success_messages": success_messages,
-    "error_messages": error_messages,
-})
+""",
+        {
+            "request": req,
+            "userid": getattr(req.g, "userid", ""),
+        },
+    )
+
 
 @app.route("/logout", methods=["GET"], name="logout")
 def logout(req: Request):

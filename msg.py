@@ -321,17 +321,17 @@ def google_response(req: Request):
     code = req.args.get("code")
     if not code:
         if req.args.get("error"):
-            message = "Error: {}".format(req.args.get("error"))
+            req.g.messages.append({"text": req.args.get("error"), "categories": ["error"]})
         else:
-            message = "Unknown error"
+            req.g.messages.append({"text": "Unknown error", "categories": ["error"]})
 
         return StringTemplateResponse(
             """{% extends 'msg.html.j2' %}
 {% block subtitle %}Google Consent{% endblock %}
 {% block content %}
-<p>{{ message }}</p>
+<p>No refresh token.</p>
 {% endblock %}""",
-            {"request": req, "message": message},
+            {"request": req},
         )
 
     data = {
@@ -381,9 +381,7 @@ def page_index(req: Request):
                     """insert or replace into presets values (?, ?, ?, ?)""", row
                 )
         except sqlite3.IntegrityError:
-            req.g.setdefault("messages", []).append(
-                ("error", "Required value missing.")
-            )
+            req.g.messages.append({"text": "Required value missing.", "categories": ["error"]})
 
     with db.connect() as conn:
         channels = list(

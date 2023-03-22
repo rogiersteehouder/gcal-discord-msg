@@ -100,6 +100,14 @@ class Status:
 status = Status()
 
 
+class Factory:
+    def __init__(self, func: Callable):
+        self.func = func
+
+    def __call__(self):
+        return self.func()
+
+
 #####
 # Errors
 #####
@@ -153,7 +161,12 @@ class Request:
         self.content_length = 0
         self.content_type = None
         self.charset = "utf-8"
+
         self.g = self.G()
+        for k, v in app.request_global.items():
+            if isinstance(v, Factory):
+                v = v()
+            setattr(self.g, k, v)
 
         self.http_version = http_version
         if "?" in self.path:
@@ -535,8 +548,14 @@ class SubServer:
         self.after_request_handlers = []
         self.after_error_request_handlers = []
         self.error_handlers = {}
+        self.request_global = {}
 
-    def route(self, url_pattern: str, methods: Optional[Iterable] = None, name: Optional[str] = None):
+    def route(
+        self,
+        url_pattern: str,
+        methods: Optional[Iterable] = None,
+        name: Optional[str] = None,
+    ):
         """Decorator: bind a function to an URL pattern for the given http methods
 
         The function takes a request object and any arguments present in the URL pattern.
@@ -583,6 +602,12 @@ class SubServer:
     def head(self, url_pattern: str, name: str = None):
         """Decorator: bind a function to an URL pattern for the HEAD method"""
         return self.route(url_pattern, ["HEAD"], name)
+
+    def update_request_global(self, g: dict = None, **kwargs):
+        if g:
+            self.request_global.update(g)
+        if kwargs:
+            self.request_global.update(kwargs)
 
     def before_request(self, f: Callable[[Request], Any]):
         """Run a function before any request is handled
@@ -638,6 +663,7 @@ class SubServer:
             self.after_error_request_handlers.append(handler)
         for code_or_exception, handler in subapp.error_handlers.items():
             self.error_handlers[code_or_exception] = handler
+        self.request_global.update(subapp.request_global)
 
 
 class Server(SubServer):
@@ -807,7 +833,10 @@ class Server(SubServer):
         return self.make_response(req, error=500)
 
     def make_response(
-        self, req: Request, resp: Any = None, error: Optional[Union[int, Type[Exception]]] = None
+        self,
+        req: Request,
+        resp: Any = None,
+        error: Optional[Union[int, Type[Exception]]] = None,
     ) -> Response:
         """Make a response"""
         if error:

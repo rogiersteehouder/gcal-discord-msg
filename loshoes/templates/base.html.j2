@@ -10,6 +10,17 @@
 	<link rel="icon" href="data:," />
 	<link rel="preload" as="style" href="/base.css" onload="this.rel='stylesheet'" />
 	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+<script>
+function removeMessage(elem) {
+	while (elem) {
+		if (elem.tagName == 'SECTION' && elem.classList.contains('message')) {
+			elem.remove();
+			break;
+		}
+		elem = elem.parentElement;
+	}
+}
+</script>
 
 {% block head %}{% endblock %}
 </head>
@@ -22,6 +33,14 @@
 </header>
 
 <main>
+{% if request.g.messages is defined %}
+{% for msg in request.g.messages %}
+<section class="message {{ ' '.join(msg.categories) if msg.categories }}">
+	<div>{{ msg.text }}</div>
+	<div class="close"><a href="javascript:void(0)" onclick="removeMessage(this)" class="button material-icons">close</a>
+</section>
+{% endfor %}
+{% endif %}
 {#
 <article>
 	<header>

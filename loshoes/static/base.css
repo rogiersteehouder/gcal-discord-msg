@@ -128,19 +128,7 @@ body > nav > .tags {
 	background: var(--color-bg);
 	color: var(--color-fg);
 }
-section.success {
-	border-color: #696;
-	box-shadow: 0 5px 10px 0 rgba(0, 51, 0, 0.2);
-	background: #efe;
-	color: #000;
-}
-section.error {
-	border-color: #966;
-	box-shadow: 0 5px 10px 0 rgba(51, 0, 0, 0.2);
-	background: #fee;
-	color: #000;
-}
-	
+
 body > main { margin: 0 15px 0 0; padding: 0; }
 body:not(:has(#site-info, #site-nav)) > main { margin: 0; }
 body > footer {
@@ -168,6 +156,21 @@ header h2 + p { margin-bottom: 1em; }
 header h1, header h2 {
 	font-size: calc(1em * var(--scale));
 	font-weight: bold;	
+}
+
+section.message { display: grid; grid-template-columns: 1fr min-content; }
+section.message > div.close { margin-left: 1em; }
+section.message.success {
+	border-color: #696;
+	box-shadow: 0 5px 10px 0 rgba(0, 51, 0, 0.2);
+	background: #efe;
+	color: #000;
+}
+section.message.error {
+	border-color: #966;
+	box-shadow: 0 5px 10px 0 rgba(51, 0, 0, 0.2);
+	background: #fee;
+	color: #000;
 }
 
 ul.menu { list-style: none; margin: 0; }
