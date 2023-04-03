@@ -45,6 +45,7 @@ db = Database(cfg["database"])
 login_auth.except_hosts.append("127.0.0.1")
 login_auth.user_check = db.user_check
 jinja_environment.loader.loaders.append(FileSystemLoader(cfg["templates"]))
+jinja_environment.globals["site_title"] = "Discord messages"
 jinja_environment.globals["navmenu"] = Navmenu(
     [
         {"title": "Overview", "url": "/"},
@@ -196,34 +197,46 @@ class GCalUpdater:
         with db.connect() as conn:
             conn.execute("""delete from crontab""")
             for seqno, event in enumerate(events):
-                if "discord-msg" in event.get("description", ""):
-                    dttm = datetime.datetime.fromisoformat(
-                        event["start"]["dateTime"].replace("Z", "+00:00")
-                    )
-                    self.log.append(
-                        "Event {}: {:%Y-%m-%d %H:%M} {}".format(
-                            seqno, dttm, event["summary"]
-                        )
-                    )
+                try:
                     data = json.loads(
-                        html.unescape(striptags.sub("", event["description"])).replace(
+                        html.unescape(striptags.sub("", event.get("description", ""))).replace(
                             "\xa0", " "
                         ),
                         object_hook=Default,
-                    )["discord-msg"]
+                    )
+                except:
+                    continue
 
-                    dttm -= datetime.timedelta(seconds=data["offset"])
+                if "discord-msg" in data:
+                    data = [data["discord-msg"]]
+                elif "discord-msgs" in data:
+                    data = data["discord-msgs"]
+                else:
+                    continue
+
+                dttm = datetime.datetime.fromisoformat(
+                    event["start"]["dateTime"].replace("Z", "+00:00")
+                )
+
+                self.log.append(
+                    "Event {}: {:%Y-%m-%d %H:%M} {}".format(
+                        seqno, dttm, event["summary"]
+                    )
+                )
+
+                for msg in data:
+                    msg_dttm = dttm - datetime.timedelta(seconds=msg["offset"])
                     conn.execute(
                         """insert into crontab values (?, ?, ?, ?)""",
                         (
                             seqno,
-                            data.get("label", ""),
-                            f"{dttm:%M\t%H\t%d\t%m\t*}",
-                            data["preset"],
+                            msg.get("label", ""),
+                            f"{msg_dttm:%M\t%H\t%d\t%m\t*}",
+                            msg["preset"],
                         ),
                     )
 
-        self.log.append("Installing as crontab:")
+        self.log.append("Installing as crontab.")
         cronlines = []
         with db.connect() as conn:
             for row in conn.execute("""select * from crontab order by seqno asc"""):
