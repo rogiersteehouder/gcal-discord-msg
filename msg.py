@@ -196,7 +196,9 @@ class GCalUpdater:
 
         with db.connect() as conn:
             conn.execute("""delete from crontab""")
-            for seqno, event in enumerate(events):
+
+            seqno = 1
+            for event in events:
                 try:
                     data = json.loads(
                         html.unescape(striptags.sub("", event.get("description", ""))).replace(
@@ -235,6 +237,7 @@ class GCalUpdater:
                             msg["preset"],
                         ),
                     )
+                    seqno += 1
 
         self.log.append("Installing as crontab.")
         cronlines = []

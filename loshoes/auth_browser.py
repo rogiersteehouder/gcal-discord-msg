@@ -168,7 +168,7 @@ def login(req: Request):
 		<form method="post">
 		<dl class="form">
 			<dt><label for="userid">User ID</label></dt>
-			<dd><input type="text" id="userid" name="userid" value="{{ userid }}" /></dd>
+			<dd><input type="text" id="userid" name="userid" value="{{ userid }}" autofocus /></dd>
 			<dt><label for="password">Password</label></dt>
 			<dd><input type="password" id="password" name="password" /></dd>
 			<dd><button type="submit">Login</button></dd>
